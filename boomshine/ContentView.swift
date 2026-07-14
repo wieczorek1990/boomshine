@@ -1,200 +1,4 @@
 import SwiftUI
-import CoreGraphics
-
-// --- App ---
-
-@main
-struct BoomShineApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
-    }
-}
-
-// --- Extensions ---
-
-extension SystemRandomNumberGenerator {
-    mutating func nextUnsignedInteger(_ value: Int) -> Int {
-        return Int(next(upperBound: UInt(value)))
-    }
-}
-
-extension CGFloat {
-    func toRoundedInt() -> Int {
-        return Int(self.rounded())
-    }
-}
-
-// --- Constants ---
-
-let USER_COLOR = Color.blue
-
-let COLORS: [Color] = [
-    Color.red, Color.green, Color.yellow, Color.brown,
-    Color.cyan, Color.gray, Color.indigo, Color.mint,
-    Color.orange, Color.pink, Color.teal,
-]
-
-let CIRCLE_COUNT: Int = 32
-let DEFAULT_LINE_WIDTH: Float = 1.0
-let DEFAULT_SIZE_MULTIPLIER: Float = 1.025
-let EPSILON: Float = 0.5
-let MINIMUM_CIRCLE_RADIUS: Float = 2.0
-let MAXIMUM_CIRCLE_RADIUS: Float = MINIMUM_CIRCLE_RADIUS * 32.0
-let STEP_SIZE: Int = 2
-
-// --- Classes ---
-
-class Circle {
-    var x: Int
-    var y: Int
-    var radius: Float
-    let color: Color
-
-    init(x: Int, y: Int, radius: Float, color: Color) {
-        self.x = x
-        self.y = y
-        self.radius = radius
-        self.color = color
-    }
-
-    func touches(_ other: Circle) -> Bool {
-        let dx = Float(self.x) - Float(other.x)
-        let dy = Float(self.y) - Float(other.y)
-        let distanceSquared = dx * dx + dy * dy
-
-        let sumR = self.radius + other.radius
-        let diffR = abs(self.radius - other.radius)
-
-        return distanceSquared <= diffR * diffR || distanceSquared < sumR * sumR
-    }
-}
-
-class BoomingCircle {
-    var circle: Circle
-    var fall: Bool = false
-    var fallCount: Int = 0
-    var untoucheable: Bool = false
-
-    init(circle: Circle) {
-        self.circle = circle
-    }
-
-    func boom() {
-        if !fall {
-            if fallCount >= 1 {
-                if circle.radius > EPSILON {
-                    circle.radius /= DEFAULT_SIZE_MULTIPLIER
-                } else {
-                    circle.radius = 0.0
-                    untoucheable = true
-                }
-                return
-            }
-
-            if circle.radius > MAXIMUM_CIRCLE_RADIUS {
-                fall = true
-                fallCount += 1
-            }
-            circle.radius *= DEFAULT_SIZE_MULTIPLIER
-        } else {
-            if circle.radius < MINIMUM_CIRCLE_RADIUS {
-                fall = false
-            }
-            circle.radius /= DEFAULT_SIZE_MULTIPLIER
-        }
-    }
-}
-
-class MovingCircle {
-    var circle: Circle
-    var direction: (Int, Int)
-    var running: Bool
-
-    init(_ circle: Circle, _ direction: (Int, Int)) {
-        self.circle = circle
-        self.direction = direction
-        self.running = true
-    }
-
-    func stop() {
-        running = false
-    }
-
-    func maximumX(_ maxX: Int) {
-        if circle.x > maxX {
-            direction.0 = 1
-        } else if circle.x < 0 {
-            direction.0 = 0
-        }
-    }
-
-    func maximumY(_ maxY: Int) {
-        if circle.y > maxY {
-            direction.1 = 1
-        } else if circle.y < 0 {
-            direction.1 = 0
-        }
-    }
-
-    func stepX() {
-        if direction.0 == 0 {
-            circle.x += STEP_SIZE
-        } else if direction.0 == 1 {
-            circle.x -= STEP_SIZE
-        }
-    }
-
-    func stepY() {
-        if direction.1 == 0 {
-            circle.y += STEP_SIZE
-        } else if direction.1 == 1 {
-            circle.y -= STEP_SIZE
-        }
-    }
-
-    func move(_ maxX: Int, _ maxY: Int) {
-        if !running { return }
-        maximumX(maxX)
-        maximumY(maxY)
-        stepX()
-        stepY()
-    }
-
-    func touches(_ boomingCircles: [BoomingCircle]) -> Bool {
-        for bc in boomingCircles {
-            if bc.untoucheable { continue }
-            if circle.touches(bc.circle) { return true }
-        }
-        return false
-    }
-}
-
-class CircleDrawer {
-    let zero: Angle = Angle(degrees: 0)
-    let fullCircle: Angle = Angle(degrees: 360)
-    var context: GraphicsContext
-    var size: CGSize
-
-    func draw(_ centerX: Int, _ centerY: Int, _ radius: Float, _ color: Color) {
-        var path = Path()
-        let center = CGPoint(x: centerX, y: centerY)
-        let r = CGFloat(radius)
-        let lineWidth = CGFloat(DEFAULT_LINE_WIDTH)
-
-        path.addArc(center: center, radius: r, startAngle: zero, endAngle: fullCircle, clockwise: true)
-        context.fill(path, with: .color(color))
-        context.stroke(path, with: .color(color), lineWidth: lineWidth)
-    }
-
-    init(_ context: GraphicsContext, _ size: CGSize) {
-        self.context = context
-        self.size = size
-    }
-}
-
-// --- ContentView ---
 
 struct ContentView: View {
     @State private var started: Bool = false
@@ -229,15 +33,13 @@ struct ContentView: View {
         }
 
         takeRandomDestinations()
-        
-        // Start game loop IMMEDIATELY after setup
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             startGameLoop()
         }
     }
 
     func move() {
-        // Allow movement from the start (remove guard started)
         for mc in movingCircles {
             mc.move(screenWidth, screenHeight)
         }
@@ -271,7 +73,6 @@ struct ContentView: View {
     }
 
     func touch() {
-        // Remove guard started - always check collisions
         var indicesToRemove: [Int] = []
         var newBoomingCircles: [BoomingCircle] = []
         var scoreDelta = 0
@@ -347,7 +148,6 @@ struct ContentView: View {
 
     private func startGameLoop() {
         Timer.scheduledTimer(withTimeInterval: gameUpdateInterval, repeats: true) { _ in
-            // Force main actor execution
             Task { @MainActor in
                 move()
                 touch()
