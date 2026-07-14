@@ -206,6 +206,10 @@ struct ContentView: View {
     @State private var movingCircles: [MovingCircle] = []
     @State private var boomingCircles: [BoomingCircle] = []
 
+    @State private var tickCount: Int = 0
+
+    private let gameUpdateInterval: TimeInterval = 1.0 / 60.0
+
     func appear(_ proxy: GeometryProxy) {
         let width = Int(proxy.size.width)
         let height = Int(proxy.size.height)
@@ -225,10 +229,15 @@ struct ContentView: View {
         }
 
         takeRandomDestinations()
+        
+        // Start game loop IMMEDIATELY after setup
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            startGameLoop()
+        }
     }
 
     func move() {
-        guard started else { return }
+        // Allow movement from the start (remove guard started)
         for mc in movingCircles {
             mc.move(screenWidth, screenHeight)
         }
@@ -262,7 +271,7 @@ struct ContentView: View {
     }
 
     func touch() {
-        guard started else { return }
+        // Remove guard started - always check collisions
         var indicesToRemove: [Int] = []
         var newBoomingCircles: [BoomingCircle] = []
         var scoreDelta = 0
@@ -306,15 +315,13 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            TimelineView(.periodic(from: .now, by: 1.0 / 60.0)) { context in
+            ZStack {
+                Color.clear
+
                 Canvas { ctx, size in
                     draw(context: ctx, size: size)
                 }
-                .onChange(of: context.date) { _, _ in
-                    move()
-                    touch()
-                    boom()
-                }
+                .id(tickCount)
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onEnded { value in
@@ -325,13 +332,27 @@ struct ContentView: View {
                             }
                         }
                 )
-                .overlay(alignment: .bottom) {
+
+                VStack {
+                    Spacer()
                     status()
-                        .padding()
                 }
+                .padding()
             }
             .onAppear {
                 appear(proxy)
+            }
+        }
+    }
+
+    private func startGameLoop() {
+        Timer.scheduledTimer(withTimeInterval: gameUpdateInterval, repeats: true) { _ in
+            // Force main actor execution
+            Task { @MainActor in
+                move()
+                touch()
+                boom()
+                tickCount += 1
             }
         }
     }
