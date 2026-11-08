@@ -245,6 +245,10 @@ struct ContentView: View {
                     .padding(8)
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white, lineWidth: 2))
                     .onTapGesture {
+                        movingCircles.removeAll()
+                        boomingCircles.removeAll()
+                        score = 0
+                        bombsRemaining = selectedBombs
                         initialized = false
                         appear(nil)
                         enterGame()
@@ -260,12 +264,27 @@ struct ContentView: View {
             }
         } else if gameState == .postGame {
             VStack(spacing: 12) {
+                HStack(spacing: 16) {
+                    Text("Bombs: \(bombsRemaining)")
+                        .font(.body)
+                        .foregroundColor(.white)
+                    Text("Ships: \(score)")
+                        .font(.body)
+                        .foregroundColor(.white)
+                    Text("Left: \(selectedCircles - score)")
+                        .font(.body)
+                        .foregroundColor(.white)
+                }
                 Text("Play Again.")
                     .font(.title2)
                     .foregroundColor(.white)
                     .padding(8)
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white, lineWidth: 2))
                     .onTapGesture {
+                        movingCircles.removeAll()
+                        boomingCircles.removeAll()
+                        score = 0
+                        bombsRemaining = selectedBombs
                         initialized = false
                         appear(nil)
                         enterGame()
@@ -277,6 +296,14 @@ struct ContentView: View {
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 2))
                     .onTapGesture {
                         enterSettings()
+                    }
+                Text("Exit.")
+                    .font(.body)
+                    .foregroundColor(.gray)
+                    .padding(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 2))
+                    .onTapGesture {
+                        resetGame()
                     }
             }
         } else {
@@ -305,6 +332,10 @@ struct ContentView: View {
                             } else if gameState == .settings {
                                 enterPreGame()
                             } else if gameState == .preGame {
+                                movingCircles.removeAll()
+                                boomingCircles.removeAll()
+                                score = 0
+                                bombsRemaining = selectedBombs
                                 initialized = false
                                 appear(nil)
                                 enterGame()
@@ -368,6 +399,10 @@ struct ContentView: View {
                             enterPreGame()
                             return nil
                         } else if gameState == .preGame {
+                            movingCircles.removeAll()
+                            boomingCircles.removeAll()
+                            score = 0
+                            bombsRemaining = selectedBombs
                             initialized = false
                             appear(nil)
                             enterGame()
