@@ -20,6 +20,7 @@ struct ContentView: View {
 
     @State private var tickCount: Int = 0
     @State private var timer: Timer?
+    @State private var initialized: Bool = false
 
     private let gameUpdateInterval: TimeInterval = 1.0 / 60.0
 
@@ -30,19 +31,23 @@ struct ContentView: View {
         screenWidth = width
         screenHeight = height
 
-        var rng = SystemRandomNumberGenerator()
-        var circles: [Circle] = []
+        if !initialized {
+            initialized = true
 
-        for _ in 0..<CIRCLE_COUNT {
-            let x = rng.nextUnsignedInteger(width)
-            let y = rng.nextUnsignedInteger(height)
-            let colorIndex = rng.nextUnsignedInteger(COLORS.count)
-            let color = COLORS[colorIndex]
+            var rng = SystemRandomNumberGenerator()
+            var circles: [Circle] = []
 
-            circles.append(Circle(x: x, y: y, radius: MINIMUM_CIRCLE_RADIUS, color: color))
+            for _ in 0..<CIRCLE_COUNT {
+                let x = rng.nextUnsignedInteger(width)
+                let y = rng.nextUnsignedInteger(height)
+                let colorIndex = rng.nextUnsignedInteger(COLORS.count)
+                let color = COLORS[colorIndex]
+
+                circles.append(Circle(x: x, y: y, radius: MINIMUM_CIRCLE_RADIUS, color: color))
+            }
+
+            takeRandomDestinations(from: circles)
         }
-
-        takeRandomDestinations(from: circles)
     }
 
     func move() {
@@ -155,12 +160,10 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                if gameState == .splash {
+                if colorScheme == .dark {
                     Color.black
-                } else if colorScheme == .dark {
-                    Color.white
                 } else {
-                    Color.black
+                    Color.white
                 }
 
                 Canvas { ctx, size in
@@ -212,6 +215,10 @@ struct ContentView: View {
                     return event
                 }
                 escapeMonitor = monitor
+            }
+            .onChange(of: proxy.size) { newSize in
+                screenWidth = Int(newSize.width)
+                screenHeight = Int(newSize.height)
             }
             .onDisappear {
                 if let monitor = escapeMonitor {
