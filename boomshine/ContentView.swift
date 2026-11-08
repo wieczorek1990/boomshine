@@ -3,6 +3,7 @@ import AppKit
 
 enum GameState {
     case splash
+    case settings
     case preGame
     case playing
     case postGame
@@ -152,9 +153,13 @@ struct ContentView: View {
         tickCount += 1
     }
 
+    func enterSettings() {
+        gameState = .settings
+        startGameLoop()
+    }
+
     func enterPreGame() {
         gameState = .preGame
-        startGameLoop()
     }
 
     func enterGame() {
@@ -163,63 +168,85 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    func status() -> some View {
-        if gameState == .preGame || gameState == .postGame {
-            VStack(spacing: 12) {
-                HStack(spacing: 20) {
-                    VStack(spacing: 4) {
-                        Text("Bombs")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        HStack(spacing: 8) {
-                            Button("4◀") {
-                                if selectedBombs > 4 { selectedBombs -= 4 } else { selectedBombs = 1 }
-                            }
-                            Button("-") {
-                                if selectedBombs > 1 { selectedBombs -= 1 }
-                            }
-                            Text("\(selectedBombs)")
-                                .font(.title3)
-                                .foregroundColor(.white)
-                                .frame(width: 30)
-                            Button("+") {
-                                if selectedBombs < 16 { selectedBombs += 1 }
-                            }
-                            Button("▶4") {
-                                if selectedBombs < 12 { selectedBombs += 4 } else { selectedBombs = 16 }
-                            }
-                        }
+    func settings() -> some View {
+        VStack(spacing: 12) {
+            VStack(spacing: 4) {
+                Text("Bombs")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                HStack(spacing: 8) {
+                    Button("4◀") {
+                        if selectedBombs > 4 { selectedBombs -= 4 } else { selectedBombs = 1 }
                     }
-                    VStack(spacing: 4) {
-                        Text("Ships")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        HStack(spacing: 8) {
-                            Button("8◀") {
-                                if selectedCircles > 8 { selectedCircles -= 8 } else { selectedCircles = 1 }
-                            }
-                            Button("-") {
-                                if selectedCircles > 1 { selectedCircles -= 1 }
-                            }
-                            Text("\(selectedCircles)")
-                                .font(.title3)
-                                .foregroundColor(.white)
-                                .frame(width: 30)
-                            Button("+") {
-                                if selectedCircles < 64 { selectedCircles += 1 }
-                            }
-                            Button("▶8") {
-                                if selectedCircles < 56 { selectedCircles += 8 } else { selectedCircles = 64 }
-                            }
-                        }
+                    Button("-") {
+                        if selectedBombs > 1 { selectedBombs -= 1 }
+                    }
+                    Text("\(selectedBombs)")
+                        .font(.title3)
+                        .foregroundColor(.white)
+                        .frame(width: 30)
+                    Button("+") {
+                        if selectedBombs < 16 { selectedBombs += 1 }
+                    }
+                    Button("▶4") {
+                        if selectedBombs < 12 { selectedBombs += 4 } else { selectedBombs = 16 }
                     }
                 }
+            }
+            VStack(spacing: 4) {
+                Text("Ships")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                HStack(spacing: 8) {
+                    Button("8◀") {
+                        if selectedCircles > 8 { selectedCircles -= 8 } else { selectedCircles = 1 }
+                    }
+                    Button("-") {
+                        if selectedCircles > 1 { selectedCircles -= 1 }
+                    }
+                    Text("\(selectedCircles)")
+                        .font(.title3)
+                        .foregroundColor(.white)
+                        .frame(width: 30)
+                    Button("+") {
+                        if selectedCircles < 64 { selectedCircles += 1 }
+                    }
+                    Button("▶8") {
+                        if selectedCircles < 56 { selectedCircles += 8 } else { selectedCircles = 64 }
+                    }
+                }
+            }
+            Text("Play.")
+                .font(.title2)
+                .foregroundColor(.white)
+                .padding(8)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white, lineWidth: 2))
+                .onTapGesture {
+                    enterPreGame()
+                }
+            Text("Exit.")
+                .font(.body)
+                .foregroundColor(.gray)
+                .padding(8)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 2))
+                .onTapGesture {
+                    resetGame()
+                }
+        }
+    }
+
+    @ViewBuilder
+    func status() -> some View {
+        if gameState == .preGame {
+            VStack(spacing: 12) {
                 Text("Play.")
                     .font(.title2)
                     .foregroundColor(.white)
                     .padding(8)
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white, lineWidth: 2))
                     .onTapGesture {
+                        initialized = false
+                        appear(nil)
                         enterGame()
                     }
                 Text("Exit.")
@@ -229,6 +256,27 @@ struct ContentView: View {
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 2))
                     .onTapGesture {
                         resetGame()
+                    }
+            }
+        } else if gameState == .postGame {
+            VStack(spacing: 12) {
+                Text("Play Again.")
+                    .font(.title2)
+                    .foregroundColor(.white)
+                    .padding(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white, lineWidth: 2))
+                    .onTapGesture {
+                        initialized = false
+                        appear(nil)
+                        enterGame()
+                    }
+                Text("Settings.")
+                    .font(.body)
+                    .foregroundColor(.gray)
+                    .padding(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 2))
+                    .onTapGesture {
+                        enterSettings()
                     }
             }
         } else {
@@ -253,11 +301,15 @@ struct ContentView: View {
                     DragGesture(minimumDistance: 0)
                         .onEnded { value in
                             if gameState == .splash {
+                                enterSettings()
+                            } else if gameState == .settings {
                                 enterPreGame()
-                            } else if gameState == .preGame || gameState == .postGame {
+                            } else if gameState == .preGame {
                                 initialized = false
                                 appear(nil)
                                 enterGame()
+                            } else if gameState == .postGame {
+                                enterSettings()
                             } else if score >= selectedCircles {
                                 gameState = .postGame
                             } else {
@@ -268,6 +320,8 @@ struct ContentView: View {
 
                 if gameState == .splash {
                     SplashView()
+                } else if gameState == .settings {
+                    settings()
                 } else if gameState == .playing {
                     VStack {
                         HStack(spacing: 16) {
@@ -294,12 +348,12 @@ struct ContentView: View {
                 appear(proxy)
                 if gameState == .splash {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        enterPreGame()
+                        enterSettings()
                     }
                 }
                 let monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
                     if event.keyCode == 53 { // ESC key
-                        if gameState == .splash {
+                        if gameState == .splash || gameState == .settings {
                             NSApplication.shared.terminate(nil)
                             return nil
                         } else if gameState == .playing {
@@ -308,14 +362,18 @@ struct ContentView: View {
                         }
                     } else if event.keyCode == 49 { // Space key
                         if gameState == .splash {
+                            enterSettings()
+                            return nil
+                        } else if gameState == .settings {
                             enterPreGame()
                             return nil
-                        } else if gameState == .preGame || gameState == .postGame {
-                            if gameState == .postGame {
-                                initialized = false
-                                appear(nil)
-                            }
+                        } else if gameState == .preGame {
+                            initialized = false
+                            appear(nil)
                             enterGame()
+                            return nil
+                        } else if gameState == .postGame {
+                            enterSettings()
                             return nil
                         }
                     }
@@ -339,7 +397,7 @@ struct ContentView: View {
         timer = Timer.scheduledTimer(withTimeInterval: gameUpdateInterval, repeats: true) { _ in
             Task { @MainActor in
                 move()
-                if gameState != .preGame {
+                if gameState != .preGame && gameState != .settings {
                     checkCollisions()
                 }
                 boom()
