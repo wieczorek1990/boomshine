@@ -12,6 +12,7 @@ struct ContentView: View {
     @State private var gameState: GameState = .splash
     @State private var escapeMonitor: Any?
     @State private var score: Int = 0
+    @State private var bombsRemaining: Int = 4
     @State private var screenWidth: Int = 0
     @State private var screenHeight: Int = 0
 
@@ -24,9 +25,9 @@ struct ContentView: View {
 
     private let gameUpdateInterval: TimeInterval = 1.0 / 60.0
 
-    func appear(_ proxy: GeometryProxy) {
-        let width = Int(proxy.size.width)
-        let height = Int(proxy.size.height)
+    func appear(_ proxy: GeometryProxy?) {
+        let width = proxy.map { Int($0.size.width) } ?? screenWidth
+        let height = proxy.map { Int($0.size.height) } ?? screenHeight
 
         screenWidth = width
         screenHeight = height
@@ -76,11 +77,24 @@ struct ContentView: View {
     }
 
     func makeInitialBoom(_ point: CGPoint) {
+        guard bombsRemaining > 0 else { return }
+        bombsRemaining -= 1
+
         let x = point.x.toRoundedInt()
         let y = point.y.toRoundedInt()
 
-        let boomCircle = Circle(x: x, y: y, radius: MINIMUM_CIRCLE_RADIUS, color: USER_COLOR)
-        boomingCircles.append(BoomingCircle(circle: boomCircle))
+        let boomCircle = Circle(x: x, y: y, radius: 0.0, color: USER_COLOR)
+        boomingCircles.append(BoomingCircle(circle: boomCircle, initial: true))
+
+        if bombsRemaining == 0 {
+            // Start a new game after bombs run out
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                resetGame()
+                // Reinitialize circles for the new game
+                initialized = false
+                appear(nil)
+            }
+        }
     }
 
     func checkCollisions() {
@@ -118,29 +132,35 @@ struct ContentView: View {
         timer = nil
         gameState = .splash
         score = 0
+        bombsRemaining = 4
         movingCircles.removeAll()
         boomingCircles.removeAll()
         tickCount += 1
     }
 
+    func enterPreGame() {
+        gameState = .preGame
+        startGameLoop()
+    }
+
     func enterGame() {
         gameState = .playing
-        startGameLoop()
     }
 
     @ViewBuilder
     func status() -> some View {
         if gameState == .preGame {
             VStack(spacing: 8) {
-                Image(systemName: "play.fill")
-                    .font(.system(size: 60))
-                    .foregroundColor(.white)
                 Text("Play.")
                     .font(.title2)
                     .foregroundColor(.white)
+                    .padding(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white, lineWidth: 2))
                 Text("Exit.")
                     .font(.body)
                     .foregroundColor(.gray)
+                    .padding(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 2))
                     .onTapGesture {
                         resetGame()
                     }
@@ -149,11 +169,7 @@ struct ContentView: View {
                 enterGame()
             }
         } else {
-            if score < CIRCLE_COUNT {
-                Text("Score: \(score)")
-            } else {
-                EmptyView()
-            }
+            EmptyView()
         }
     }
 
@@ -174,7 +190,7 @@ struct ContentView: View {
                     DragGesture(minimumDistance: 0)
                         .onEnded { value in
                             if gameState == .splash {
-                                gameState = .preGame
+                                enterPreGame()
                             } else if gameState == .preGame {
                                 enterGame()
                             } else if score >= CIRCLE_COUNT {
@@ -187,19 +203,32 @@ struct ContentView: View {
 
                 if gameState == .splash {
                     SplashView()
-                } else {
+                } else if gameState == .playing {
                     VStack {
                         Spacer()
+                        HStack(spacing: 16) {
+                            Text("Bombs: \(bombsRemaining)")
+                                .font(.body)
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                            if score < CIRCLE_COUNT {
+                                Text("Score: \(score)")
+                                    .font(.body)
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                            }
+                        }
+                        .padding()
                         status()
                     }
-                    .padding()
+                    .padding(.bottom)
+                } else {
+                    status()
                 }
             }
             .onAppear {
                 appear(proxy)
                 if gameState == .splash {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        gameState = .preGame
+                        enterPreGame()
                     }
                 }
                 let monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
@@ -209,6 +238,14 @@ struct ContentView: View {
                             return nil
                         } else if gameState == .playing {
                             resetGame()
+                            return nil
+                        }
+                    } else if event.keyCode == 49 { // Space key
+                        if gameState == .splash {
+                            enterPreGame()
+                            return nil
+                        } else if gameState == .preGame {
+                            enterGame()
                             return nil
                         }
                     }

@@ -31,9 +31,11 @@ class BoomingCircle {
     var fallCount: Int = 0
     var untoucheable: Bool = false
     var isDone: Bool = false
+    var initial: Bool = false
 
-    init(circle: Circle) {
+    init(circle: Circle, initial: Bool = false) {
         self.circle = circle
+        self.initial = initial
     }
 
     func boom() {
@@ -53,7 +55,25 @@ class BoomingCircle {
                 fall = true
                 fallCount += 1
             }
-            circle.radius *= DEFAULT_SIZE_MULTIPLIER
+            if initial {
+                // Start from zero with additive growth, then switch to multiplicative
+                if circle.radius < EPSILON {
+                    circle.radius += 0.5
+                } else {
+                    // Quick burst to medium, then stable growth to max
+                    let medium = MAXIMUM_CIRCLE_RADIUS / 2
+                    if circle.radius < medium {
+                        // Fast growth phase: small → medium (additive boost for smooth visible growth)
+                        circle.radius *= DEFAULT_SIZE_MULTIPLIER
+                        circle.radius += 2.0
+                    } else {
+                        // Stable growth phase: medium → max
+                        circle.radius *= DEFAULT_SIZE_MULTIPLIER
+                    }
+                }
+            } else {
+                circle.radius *= DEFAULT_SIZE_MULTIPLIER
+            }
         } else {
             if circle.radius < MINIMUM_CIRCLE_RADIUS {
                 fall = false
