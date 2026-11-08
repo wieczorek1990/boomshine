@@ -5,6 +5,7 @@ enum GameState {
     case splash
     case preGame
     case playing
+    case postGame
 }
 
 struct ContentView: View {
@@ -13,6 +14,8 @@ struct ContentView: View {
     @State private var escapeMonitor: Any?
     @State private var score: Int = 0
     @State private var bombsRemaining: Int = 4
+    @State private var selectedBombs: Int = 4
+    @State private var selectedCircles: Int = 32
     @State private var screenWidth: Int = 0
     @State private var screenHeight: Int = 0
 
@@ -38,7 +41,7 @@ struct ContentView: View {
             var rng = SystemRandomNumberGenerator()
             var circles: [Circle] = []
 
-            for _ in 0..<CIRCLE_COUNT {
+            for _ in 0..<selectedCircles {
                 let x = rng.nextUnsignedInteger(width)
                 let y = rng.nextUnsignedInteger(height)
                 let colorIndex = rng.nextUnsignedInteger(COLORS.count)
@@ -86,15 +89,6 @@ struct ContentView: View {
         let boomCircle = Circle(x: x, y: y, radius: 0.0, color: USER_COLOR)
         boomingCircles.append(BoomingCircle(circle: boomCircle, initial: true))
 
-        if bombsRemaining == 0 {
-            // Start a new game after bombs run out
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                resetGame()
-                // Reinitialize circles for the new game
-                initialized = false
-                appear(nil)
-            }
-        }
     }
 
     func checkCollisions() {
@@ -125,6 +119,26 @@ struct ContentView: View {
             bc.boom()
         }
         boomingCircles.removeAll { $0.isDone }
+        
+        // When all bombs are spent and no booming circles remain, add ships to equalize and transition to postGame
+        if gameState == .playing && bombsRemaining == 0 && boomingCircles.isEmpty {
+            // Add new ships to replenish the count
+            let shipsLeft = selectedCircles - score
+            if shipsLeft > 0 {
+                var rng = SystemRandomNumberGenerator()
+                for _ in 0..<shipsLeft {
+                    let x = rng.nextUnsignedInteger(screenWidth)
+                    let y = rng.nextUnsignedInteger(screenHeight)
+                    let colorIndex = rng.nextUnsignedInteger(COLORS.count)
+                    let color = COLORS[colorIndex]
+                    let circle = Circle(x: x, y: y, radius: MINIMUM_CIRCLE_RADIUS, color: color)
+                    let dx = Int.random(in: 0...1)
+                    let dy = Int.random(in: 0...1)
+                    movingCircles.append(MovingCircle(circle, (dx, dy)))
+                }
+            }
+            gameState = .postGame
+        }
     }
 
     func resetGame() {
@@ -132,7 +146,7 @@ struct ContentView: View {
         timer = nil
         gameState = .splash
         score = 0
-        bombsRemaining = 4
+        bombsRemaining = selectedBombs
         movingCircles.removeAll()
         boomingCircles.removeAll()
         tickCount += 1
@@ -144,18 +158,70 @@ struct ContentView: View {
     }
 
     func enterGame() {
+        bombsRemaining = selectedBombs
         gameState = .playing
     }
 
     @ViewBuilder
     func status() -> some View {
-        if gameState == .preGame {
-            VStack(spacing: 8) {
+        if gameState == .preGame || gameState == .postGame {
+            VStack(spacing: 12) {
+                HStack(spacing: 20) {
+                    VStack(spacing: 4) {
+                        Text("Bombs")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        HStack(spacing: 8) {
+                            Button("4◀") {
+                                if selectedBombs > 4 { selectedBombs -= 4 } else { selectedBombs = 1 }
+                            }
+                            Button("-") {
+                                if selectedBombs > 1 { selectedBombs -= 1 }
+                            }
+                            Text("\(selectedBombs)")
+                                .font(.title3)
+                                .foregroundColor(.white)
+                                .frame(width: 30)
+                            Button("+") {
+                                if selectedBombs < 16 { selectedBombs += 1 }
+                            }
+                            Button("▶4") {
+                                if selectedBombs < 12 { selectedBombs += 4 } else { selectedBombs = 16 }
+                            }
+                        }
+                    }
+                    VStack(spacing: 4) {
+                        Text("Ships")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        HStack(spacing: 8) {
+                            Button("8◀") {
+                                if selectedCircles > 8 { selectedCircles -= 8 } else { selectedCircles = 1 }
+                            }
+                            Button("-") {
+                                if selectedCircles > 1 { selectedCircles -= 1 }
+                            }
+                            Text("\(selectedCircles)")
+                                .font(.title3)
+                                .foregroundColor(.white)
+                                .frame(width: 30)
+                            Button("+") {
+                                if selectedCircles < 64 { selectedCircles += 1 }
+                            }
+                            Button("▶8") {
+                                if selectedCircles < 56 { selectedCircles += 8 } else { selectedCircles = 64 }
+                            }
+                        }
+                    }
+                }
                 Text("Play.")
                     .font(.title2)
                     .foregroundColor(.white)
                     .padding(8)
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white, lineWidth: 2))
+                    .onTapGesture {
+                        enterGame()
+                    }
                 Text("Exit.")
                     .font(.body)
                     .foregroundColor(.gray)
@@ -164,9 +230,6 @@ struct ContentView: View {
                     .onTapGesture {
                         resetGame()
                     }
-            }
-            .onTapGesture {
-                enterGame()
             }
         } else {
             EmptyView()
@@ -191,10 +254,12 @@ struct ContentView: View {
                         .onEnded { value in
                             if gameState == .splash {
                                 enterPreGame()
-                            } else if gameState == .preGame {
+                            } else if gameState == .preGame || gameState == .postGame {
+                                initialized = false
+                                appear(nil)
                                 enterGame()
-                            } else if score >= CIRCLE_COUNT {
-                                resetGame()
+                            } else if score >= selectedCircles {
+                                gameState = .postGame
                             } else {
                                 makeInitialBoom(value.location)
                             }
@@ -205,22 +270,23 @@ struct ContentView: View {
                     SplashView()
                 } else if gameState == .playing {
                     VStack {
-                        Spacer()
                         HStack(spacing: 16) {
                             Text("Bombs: \(bombsRemaining)")
                                 .font(.body)
                                 .foregroundColor(colorScheme == .dark ? .white : .black)
-                            if score < CIRCLE_COUNT {
-                                Text("Score: \(score)")
-                                    .font(.body)
-                                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                            }
+                            Text("Ships: \(score)")
+                                .font(.body)
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                            Text("Left: \(selectedCircles - score)")
+                                .font(.body)
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
                         }
                         .padding()
+                        Spacer()
                         status()
                     }
-                    .padding(.bottom)
-                } else {
+                    .padding(.top)
+                } else if gameState == .preGame || gameState == .postGame {
                     status()
                 }
             }
@@ -244,7 +310,11 @@ struct ContentView: View {
                         if gameState == .splash {
                             enterPreGame()
                             return nil
-                        } else if gameState == .preGame {
+                        } else if gameState == .preGame || gameState == .postGame {
+                            if gameState == .postGame {
+                                initialized = false
+                                appear(nil)
+                            }
                             enterGame()
                             return nil
                         }
@@ -269,7 +339,9 @@ struct ContentView: View {
         timer = Timer.scheduledTimer(withTimeInterval: gameUpdateInterval, repeats: true) { _ in
             Task { @MainActor in
                 move()
-                checkCollisions()
+                if gameState != .preGame {
+                    checkCollisions()
+                }
                 boom()
                 tickCount += 1
             }
