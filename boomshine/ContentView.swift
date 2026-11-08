@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 enum GameState {
     case splash
@@ -9,6 +10,7 @@ enum GameState {
 struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var gameState: GameState = .splash
+    @State private var escapeMonitor: Any?
     @State private var score: Int = 0
     @State private var screenWidth: Int = 0
     @State private var screenHeight: Int = 0
@@ -124,7 +126,23 @@ struct ContentView: View {
     @ViewBuilder
     func status() -> some View {
         if gameState == .preGame {
-            EmptyView()
+            VStack(spacing: 8) {
+                Image(systemName: "play.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(.white)
+                Text("Play.")
+                    .font(.title2)
+                    .foregroundColor(.white)
+                Text("Exit.")
+                    .font(.body)
+                    .foregroundColor(.gray)
+                    .onTapGesture {
+                        resetGame()
+                    }
+            }
+            .onTapGesture {
+                enterGame()
+            }
         } else {
             if score < CIRCLE_COUNT {
                 Text("Score: \(score)")
@@ -181,12 +199,24 @@ struct ContentView: View {
                         gameState = .preGame
                     }
                 }
-            }
-            .onKeyPress(.escape) {
-                if gameState == .playing {
-                    resetGame()
+                let monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                    if event.keyCode == 53 { // ESC key
+                        if gameState == .splash {
+                            NSApplication.shared.terminate(nil)
+                            return nil
+                        } else if gameState == .playing {
+                            resetGame()
+                            return nil
+                        }
+                    }
+                    return event
                 }
-                return .handled
+                escapeMonitor = monitor
+            }
+            .onDisappear {
+                if let monitor = escapeMonitor {
+                    NSEvent.removeMonitor(monitor)
+                }
             }
         }
     }
