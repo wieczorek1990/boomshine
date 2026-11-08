@@ -1,13 +1,14 @@
 import SwiftUI
 
 enum GameState {
+    case splash
     case preGame
     case playing
 }
 
 struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
-    @State private var gameState: GameState = .preGame
+    @State private var gameState: GameState = .splash
     @State private var score: Int = 0
     @State private var screenWidth: Int = 0
     @State private var screenHeight: Int = 0
@@ -108,7 +109,7 @@ struct ContentView: View {
     func resetGame() {
         timer?.invalidate()
         timer = nil
-        gameState = .preGame
+        gameState = .splash
         score = 0
         movingCircles.removeAll()
         boomingCircles.removeAll()
@@ -123,12 +124,12 @@ struct ContentView: View {
     @ViewBuilder
     func status() -> some View {
         if gameState == .preGame {
-            LogoView()
+            EmptyView()
         } else {
             if score < CIRCLE_COUNT {
                 Text("Score: \(score)")
             } else {
-                LogoView()
+                EmptyView()
             }
         }
     }
@@ -136,7 +137,9 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                if colorScheme == .dark {
+                if gameState == .splash {
+                    Color.black
+                } else if colorScheme == .dark {
                     Color.white
                 } else {
                     Color.black
@@ -149,25 +152,35 @@ struct ContentView: View {
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onEnded { value in
-                            if gameState == .preGame {
+                            if gameState == .splash {
+                                gameState = .preGame
+                            } else if gameState == .preGame {
                                 enterGame()
                             } else if score >= CIRCLE_COUNT {
                                 resetGame()
-                                enterGame()
                             } else {
                                 makeInitialBoom(value.location)
                             }
                         }
                 )
 
-                VStack {
-                    Spacer()
-                    status()
+                if gameState == .splash {
+                    SplashView()
+                } else {
+                    VStack {
+                        Spacer()
+                        status()
+                    }
+                    .padding()
                 }
-                .padding()
             }
             .onAppear {
                 appear(proxy)
+                if gameState == .splash {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        gameState = .preGame
+                    }
+                }
             }
             .onKeyPress(.escape) {
                 if gameState == .playing {
