@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var started: Bool = false
     @State private var score: Int = 0
     @State private var screenWidth: Int = 0
@@ -129,7 +130,11 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                Color.clear
+                if colorScheme == .dark {
+                    Color.white
+                } else {
+                    Color.black
+                }
 
                 Canvas { ctx, size in
                     draw(context: ctx, size: size)
