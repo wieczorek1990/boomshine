@@ -111,7 +111,7 @@ struct ContentView: View {
                 movingCircles.remove(at: index)
             }
             boomingCircles.append(contentsOf: newBoomingCircles)
-            score += scoreDelta
+            score = min(score + scoreDelta, selectedCircles)
         }
     }
 
