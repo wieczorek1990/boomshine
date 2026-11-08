@@ -6,11 +6,11 @@ struct ContentView: View {
     @State private var screenWidth: Int = 0
     @State private var screenHeight: Int = 0
 
-    @State private var circles: [Circle] = []
     @State private var movingCircles: [MovingCircle] = []
     @State private var boomingCircles: [BoomingCircle] = []
 
     @State private var tickCount: Int = 0
+    @State private var timer: Timer?
 
     private let gameUpdateInterval: TimeInterval = 1.0 / 60.0
 
@@ -22,6 +22,7 @@ struct ContentView: View {
         screenHeight = height
 
         var rng = SystemRandomNumberGenerator()
+        var circles: [Circle] = []
 
         for _ in 0..<CIRCLE_COUNT {
             let x = rng.nextUnsignedInteger(width)
@@ -32,7 +33,7 @@ struct ContentView: View {
             circles.append(Circle(x: x, y: y, radius: MINIMUM_CIRCLE_RADIUS, color: color))
         }
 
-        takeRandomDestinations()
+        takeRandomDestinations(from: circles)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             startGameLoop()
@@ -46,7 +47,7 @@ struct ContentView: View {
     }
 
     func draw(context: GraphicsContext, size: CGSize) {
-        let drawer = CircleDrawer(context, size)
+        let drawer = CircleDrawer(context)
 
         for mc in movingCircles {
             drawer.draw(mc.circle.x, mc.circle.y, mc.circle.radius, mc.circle.color)
@@ -56,7 +57,7 @@ struct ContentView: View {
         }
     }
 
-    func takeRandomDestinations() {
+    func takeRandomDestinations(from circles: [Circle]) {
         for circle in circles {
             let dx = Int.random(in: 0...1)
             let dy = Int.random(in: 0...1)
@@ -72,7 +73,7 @@ struct ContentView: View {
         boomingCircles.append(BoomingCircle(circle: boomCircle))
     }
 
-    func touch() {
+    func checkCollisions() {
         var indicesToRemove: [Int] = []
         var newBoomingCircles: [BoomingCircle] = []
         var scoreDelta = 0
@@ -99,6 +100,17 @@ struct ContentView: View {
         for bc in boomingCircles {
             bc.boom()
         }
+        boomingCircles.removeAll { $0.isDone }
+    }
+
+    func resetGame() {
+        timer?.invalidate()
+        timer = nil
+        started = false
+        score = 0
+        movingCircles.removeAll()
+        boomingCircles.removeAll()
+        tickCount += 1
     }
 
     @ViewBuilder
@@ -109,7 +121,7 @@ struct ContentView: View {
             if score < CIRCLE_COUNT {
                 Text("Score: \(score)")
             } else {
-                Text("Done! 🎉")
+                Text("Done! 🎉 Tap to play again.")
             }
         }
     }
@@ -125,9 +137,14 @@ struct ContentView: View {
                 .id(tickCount)
                 .gesture(
                     DragGesture(minimumDistance: 0)
-                        .onEnded { value in
+                        .onChanged { value in
                             if !started {
                                 started = true
+                                makeInitialBoom(value.location)
+                            } else if score >= CIRCLE_COUNT {
+                                resetGame()
+                                started = true
+                                makeInitialBoom(value.location)
                             } else {
                                 makeInitialBoom(value.location)
                             }
@@ -147,10 +164,10 @@ struct ContentView: View {
     }
 
     private func startGameLoop() {
-        Timer.scheduledTimer(withTimeInterval: gameUpdateInterval, repeats: true) { _ in
+        timer = Timer.scheduledTimer(withTimeInterval: gameUpdateInterval, repeats: true) { _ in
             Task { @MainActor in
                 move()
-                touch()
+                checkCollisions()
                 boom()
                 tickCount += 1
             }

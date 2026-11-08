@@ -30,6 +30,7 @@ class BoomingCircle {
     var fall: Bool = false
     var fallCount: Int = 0
     var untoucheable: Bool = false
+    var isDone: Bool = false
 
     init(circle: Circle) {
         self.circle = circle
@@ -43,6 +44,7 @@ class BoomingCircle {
                 } else {
                     circle.radius = 0.0
                     untoucheable = true
+                    isDone = true
                 }
                 return
             }
@@ -78,16 +80,20 @@ class MovingCircle {
 
     func maximumX(_ maxX: Int) {
         if circle.x > maxX {
+            circle.x = maxX
             direction.0 = 1
         } else if circle.x < 0 {
+            circle.x = 0
             direction.0 = 0
         }
     }
 
     func maximumY(_ maxY: Int) {
         if circle.y > maxY {
+            circle.y = maxY
             direction.1 = 1
         } else if circle.y < 0 {
+            circle.y = 0
             direction.1 = 0
         }
     }
