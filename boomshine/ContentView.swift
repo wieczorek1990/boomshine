@@ -87,7 +87,7 @@ struct ContentView: View {
         }
 
         if !indicesToRemove.isEmpty || !newBoomingCircles.isEmpty || scoreDelta != 0 {
-            for index in indicesToRemove.sorted() {
+            for index in indicesToRemove.sorted(by: >) {
                 movingCircles.remove(at: index)
             }
             boomingCircles.append(contentsOf: newBoomingCircles)
