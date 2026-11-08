@@ -1,8 +1,13 @@
 import SwiftUI
 
+enum GameState {
+    case preGame
+    case playing
+}
+
 struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
-    @State private var started: Bool = false
+    @State private var gameState: GameState = .preGame
     @State private var score: Int = 0
     @State private var screenWidth: Int = 0
     @State private var screenHeight: Int = 0
@@ -35,10 +40,6 @@ struct ContentView: View {
         }
 
         takeRandomDestinations(from: circles)
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            startGameLoop()
-        }
     }
 
     func move() {
@@ -107,22 +108,27 @@ struct ContentView: View {
     func resetGame() {
         timer?.invalidate()
         timer = nil
-        started = false
+        gameState = .preGame
         score = 0
         movingCircles.removeAll()
         boomingCircles.removeAll()
         tickCount += 1
     }
 
+    func enterGame() {
+        gameState = .playing
+        startGameLoop()
+    }
+
     @ViewBuilder
     func status() -> some View {
-        if !started {
-            Text("Press anywhere to start.")
+        if gameState == .preGame {
+            LogoView()
         } else {
             if score < CIRCLE_COUNT {
                 Text("Score: \(score)")
             } else {
-                Text("Done! 🎉 Tap to play again.")
+                LogoView()
             }
         }
     }
@@ -142,14 +148,12 @@ struct ContentView: View {
                 .id(tickCount)
                 .gesture(
                     DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            if !started {
-                                started = true
-                                makeInitialBoom(value.location)
+                        .onEnded { value in
+                            if gameState == .preGame {
+                                enterGame()
                             } else if score >= CIRCLE_COUNT {
                                 resetGame()
-                                started = true
-                                makeInitialBoom(value.location)
+                                enterGame()
                             } else {
                                 makeInitialBoom(value.location)
                             }
@@ -164,6 +168,12 @@ struct ContentView: View {
             }
             .onAppear {
                 appear(proxy)
+            }
+            .onKeyPress(.escape) {
+                if gameState == .playing {
+                    resetGame()
+                }
+                return .handled
             }
         }
     }
