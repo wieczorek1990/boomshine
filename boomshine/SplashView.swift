@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SplashView: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         Image("soiree_logo")
             .resizable()

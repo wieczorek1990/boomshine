@@ -17,6 +17,7 @@ struct ContentView: View {
     @State private var bombsRemaining: Int = 4
     @State private var selectedBombs: Int = 4
     @State private var selectedCircles: Int = 32
+    @State private var selectedSpeed: GameSpeed = .regular
     @State private var screenWidth: Int = 0
     @State private var screenHeight: Int = 0
 
@@ -36,7 +37,7 @@ struct ContentView: View {
         screenWidth = width
         screenHeight = height
 
-        if !initialized {
+        if !initialized && width > 0 && height > 0 {
             initialized = true
 
             var rng = SystemRandomNumberGenerator()
@@ -56,8 +57,9 @@ struct ContentView: View {
     }
 
     func move() {
+        let step = stepSize(for: selectedSpeed)
         for mc in movingCircles {
-            mc.move(screenWidth, screenHeight)
+            mc.move(screenWidth, screenHeight, stepSize: step)
         }
     }
 
@@ -169,11 +171,13 @@ struct ContentView: View {
 
     @ViewBuilder
     func settings() -> some View {
+        let primaryColor = colorScheme == .dark ? Color.white : Color.black
+        let secondaryColor = colorScheme == .dark ? Color.gray : Color.gray
         VStack(spacing: 12) {
             VStack(spacing: 4) {
                 Text("Bombs")
                     .font(.caption)
-                    .foregroundColor(.gray)
+                    .foregroundColor(secondaryColor)
                 HStack(spacing: 8) {
                     Button("4◀") {
                         if selectedBombs > 4 { selectedBombs -= 4 } else { selectedBombs = 1 }
@@ -183,7 +187,7 @@ struct ContentView: View {
                     }
                     Text("\(selectedBombs)")
                         .font(.title3)
-                        .foregroundColor(.white)
+                        .foregroundColor(primaryColor)
                         .frame(width: 30)
                     Button("+") {
                         if selectedBombs < 16 { selectedBombs += 1 }
@@ -196,7 +200,7 @@ struct ContentView: View {
             VStack(spacing: 4) {
                 Text("Ships")
                     .font(.caption)
-                    .foregroundColor(.gray)
+                    .foregroundColor(secondaryColor)
                 HStack(spacing: 8) {
                     Button("8◀") {
                         if selectedCircles > 8 { selectedCircles -= 8 } else { selectedCircles = 1 }
@@ -206,7 +210,7 @@ struct ContentView: View {
                     }
                     Text("\(selectedCircles)")
                         .font(.title3)
-                        .foregroundColor(.white)
+                        .foregroundColor(primaryColor)
                         .frame(width: 30)
                     Button("+") {
                         if selectedCircles < 64 { selectedCircles += 1 }
@@ -216,19 +220,42 @@ struct ContentView: View {
                     }
                 }
             }
-            Text("Play.")
+            VStack(spacing: 4) {
+                Text("Speed")
+                    .font(.caption)
+                    .foregroundColor(secondaryColor)
+                HStack(spacing: 8) {
+                    Button("Slow") {
+                        selectedSpeed = .slow
+                    }
+                    .foregroundColor(selectedSpeed == .slow ? primaryColor : secondaryColor)
+                    Button("Regular") {
+                        selectedSpeed = .regular
+                    }
+                    .foregroundColor(selectedSpeed == .regular ? primaryColor : secondaryColor)
+                    Button("Fast") {
+                        selectedSpeed = .fast
+                    }
+                    .foregroundColor(selectedSpeed == .fast ? primaryColor : secondaryColor)
+                    Button("Superfast") {
+                        selectedSpeed = .superfast
+                    }
+                    .foregroundColor(selectedSpeed == .superfast ? primaryColor : secondaryColor)
+                }
+            }
+            Text("Select.")
                 .font(.title2)
-                .foregroundColor(.white)
+                .foregroundColor(primaryColor)
                 .padding(8)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white, lineWidth: 2))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(primaryColor, lineWidth: 2))
                 .onTapGesture {
                     enterPreGame()
                 }
             Text("Exit.")
                 .font(.body)
-                .foregroundColor(.gray)
+                .foregroundColor(secondaryColor)
                 .padding(8)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 2))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(secondaryColor, lineWidth: 2))
                 .onTapGesture {
                     resetGame()
                 }
@@ -237,13 +264,15 @@ struct ContentView: View {
 
     @ViewBuilder
     func status() -> some View {
+        let primaryColor = colorScheme == .dark ? Color.white : Color.black
+        let secondaryColor = colorScheme == .dark ? Color.gray : Color.gray
         if gameState == .preGame {
             VStack(spacing: 12) {
                 Text("Play.")
                     .font(.title2)
-                    .foregroundColor(.white)
+                    .foregroundColor(primaryColor)
                     .padding(8)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white, lineWidth: 2))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(primaryColor, lineWidth: 2))
                     .onTapGesture {
                         movingCircles.removeAll()
                         boomingCircles.removeAll()
@@ -255,9 +284,9 @@ struct ContentView: View {
                     }
                 Text("Exit.")
                     .font(.body)
-                    .foregroundColor(.gray)
+                    .foregroundColor(secondaryColor)
                     .padding(8)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 2))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(secondaryColor, lineWidth: 2))
                     .onTapGesture {
                         resetGame()
                     }
@@ -267,19 +296,19 @@ struct ContentView: View {
                 HStack(spacing: 16) {
                     Text("Bombs: \(bombsRemaining)")
                         .font(.body)
-                        .foregroundColor(.white)
+                        .foregroundColor(primaryColor)
                     Text("Ships: \(score)")
                         .font(.body)
-                        .foregroundColor(.white)
+                        .foregroundColor(primaryColor)
                     Text("Left: \(selectedCircles - score)")
                         .font(.body)
-                        .foregroundColor(.white)
+                        .foregroundColor(primaryColor)
                 }
                 Text("Play Again.")
                     .font(.title2)
-                    .foregroundColor(.white)
+                    .foregroundColor(primaryColor)
                     .padding(8)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white, lineWidth: 2))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(primaryColor, lineWidth: 2))
                     .onTapGesture {
                         movingCircles.removeAll()
                         boomingCircles.removeAll()
@@ -291,17 +320,17 @@ struct ContentView: View {
                     }
                 Text("Settings.")
                     .font(.body)
-                    .foregroundColor(.gray)
+                    .foregroundColor(secondaryColor)
                     .padding(8)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 2))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(secondaryColor, lineWidth: 2))
                     .onTapGesture {
                         enterSettings()
                     }
                 Text("Exit.")
                     .font(.body)
-                    .foregroundColor(.gray)
+                    .foregroundColor(secondaryColor)
                     .padding(8)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 2))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(secondaryColor, lineWidth: 2))
                     .onTapGesture {
                         resetGame()
                     }
@@ -314,14 +343,18 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                if colorScheme == .dark {
+                if gameState == .splash {
+                    Color.black
+                } else if colorScheme == .dark {
                     Color.black
                 } else {
                     Color.white
                 }
 
                 Canvas { ctx, size in
-                    draw(context: ctx, size: size)
+                    if gameState != .splash {
+                        draw(context: ctx, size: size)
+                    }
                 }
                 .id(tickCount)
                 .gesture(
@@ -411,14 +444,35 @@ struct ContentView: View {
                             enterSettings()
                             return nil
                         }
+                    } else if event.keyCode == 8 && event.modifierFlags.contains(.command) { // Cmd+C -> Play
+                        if gameState == .preGame {
+                            movingCircles.removeAll()
+                            boomingCircles.removeAll()
+                            score = 0
+                            bombsRemaining = selectedBombs
+                            initialized = false
+                            appear(nil)
+                            enterGame()
+                            return nil
+                        } else if gameState == .postGame {
+                            movingCircles.removeAll()
+                            boomingCircles.removeAll()
+                            score = 0
+                            bombsRemaining = selectedBombs
+                            initialized = false
+                            appear(nil)
+                            enterGame()
+                            return nil
+                        }
                     }
                     return event
                 }
                 escapeMonitor = monitor
             }
-            .onChange(of: proxy.size) { newSize in
+            .onChange(of: proxy.size) { _, newSize in
                 screenWidth = Int(newSize.width)
                 screenHeight = Int(newSize.height)
+                appear(proxy)
             }
             .onDisappear {
                 if let monitor = escapeMonitor {

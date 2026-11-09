@@ -118,28 +118,28 @@ class MovingCircle {
         }
     }
 
-    func stepX() {
+    func stepX(_ stepSize: Int) {
         if direction.0 == 0 {
-            circle.x += STEP_SIZE
+            circle.x += stepSize
         } else if direction.0 == 1 {
-            circle.x -= STEP_SIZE
+            circle.x -= stepSize
         }
     }
 
-    func stepY() {
+    func stepY(_ stepSize: Int) {
         if direction.1 == 0 {
-            circle.y += STEP_SIZE
+            circle.y += stepSize
         } else if direction.1 == 1 {
-            circle.y -= STEP_SIZE
+            circle.y -= stepSize
         }
     }
 
-    func move(_ maxX: Int, _ maxY: Int) {
+    func move(_ maxX: Int, _ maxY: Int, stepSize: Int) {
         if !running { return }
         maximumX(maxX)
         maximumY(maxY)
-        stepX()
-        stepY()
+        stepX(stepSize)
+        stepY(stepSize)
     }
 
     func touches(_ boomingCircles: [BoomingCircle]) -> Bool {
