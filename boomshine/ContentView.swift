@@ -251,14 +251,6 @@ struct ContentView: View {
                 .onTapGesture {
                     enterPreGame()
                 }
-            Text("Exit.")
-                .font(.body)
-                .foregroundColor(secondaryColor)
-                .padding(8)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(secondaryColor, lineWidth: 2))
-                .onTapGesture {
-                    resetGame()
-                }
         }
     }
 
@@ -281,14 +273,6 @@ struct ContentView: View {
                         initialized = false
                         appear(nil)
                         enterGame()
-                    }
-                Text("Exit.")
-                    .font(.body)
-                    .foregroundColor(secondaryColor)
-                    .padding(8)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(secondaryColor, lineWidth: 2))
-                    .onTapGesture {
-                        resetGame()
                     }
             }
         } else if gameState == .postGame {
@@ -325,14 +309,6 @@ struct ContentView: View {
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(secondaryColor, lineWidth: 2))
                     .onTapGesture {
                         enterSettings()
-                    }
-                Text("Exit.")
-                    .font(.body)
-                    .foregroundColor(secondaryColor)
-                    .padding(8)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(secondaryColor, lineWidth: 2))
-                    .onTapGesture {
-                        resetGame()
                     }
             }
         } else {
