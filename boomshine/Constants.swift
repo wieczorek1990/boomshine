@@ -35,3 +35,14 @@ func stepSize(for speed: GameSpeed) -> Int {
   case .superfast: return STEP_SIZE_SUPERFAST
   }
 }
+
+struct ProgressiveLevel {
+  let bombs: Int
+  let ships: Int
+}
+
+let PROGRESSIVE_LEVELS: [ProgressiveLevel] = [
+  ProgressiveLevel(bombs: 1, ships: 1),
+  ProgressiveLevel(bombs: 2, ships: 2),
+  ProgressiveLevel(bombs: 3, ships: 5),
+]
