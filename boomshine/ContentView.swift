@@ -281,6 +281,9 @@ struct ContentView: View {
           Text("Bombs: \(bombsRemaining)")
             .font(.body)
             .foregroundColor(primaryColor)
+          Text("Used: \(selectedBombs - bombsRemaining)")
+            .font(.body)
+            .foregroundColor(primaryColor)
           Text("Ships: \(score)")
             .font(.body)
             .foregroundColor(primaryColor)
@@ -366,6 +369,9 @@ struct ContentView: View {
           VStack {
             HStack(spacing: 16) {
               Text("Bombs: \(bombsRemaining)")
+                .font(.body)
+                .foregroundColor(colorScheme == .dark ? .white : .black)
+              Text("Used: \(selectedBombs - bombsRemaining)")
                 .font(.body)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
               Text("Ships: \(score)")
