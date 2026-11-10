@@ -121,6 +121,13 @@ struct ContentView: View {
     }
   }
 
+  func currentGoal() -> Int {
+    if progressiveMode {
+      return PROGRESSIVE_LEVELS[currentLevel].goal
+    }
+    return selectedCircles
+  }
+
   func boom() {
     for bc in boomingCircles {
       bc.boom()
@@ -129,8 +136,9 @@ struct ContentView: View {
 
     // When all bombs are spent and no booming circles remain, end the round
     if gameState == .playing && bombsRemaining == 0 && boomingCircles.isEmpty {
-      // In progressive mode, advance to the next level only if the player won (caught all ships)
-      if progressiveMode && score >= selectedCircles && currentLevel < PROGRESSIVE_LEVELS.count - 1 {
+      let goal = currentGoal()
+      // In progressive mode, advance to the next level only if the player met the goal
+      if progressiveMode && score >= goal && currentLevel < PROGRESSIVE_LEVELS.count - 1 {
         gameWon = true
         // Advance to the next level
         currentLevel += 1
@@ -145,7 +153,7 @@ struct ContentView: View {
         appear(nil)
         return
       }
-      gameWon = score >= selectedCircles
+      gameWon = score >= goal
       gameState = .postGame
     }
   }
@@ -351,6 +359,10 @@ struct ContentView: View {
           Text("You won!")
             .font(.title)
             .foregroundColor(primaryColor)
+        } else {
+          Text("You failed!")
+            .font(.title)
+            .foregroundColor(primaryColor)
         }
         HStack(spacing: 16) {
           if progressiveMode {
@@ -364,10 +376,11 @@ struct ContentView: View {
           Text("Used: \(selectedBombs - bombsRemaining)")
             .font(.body)
             .foregroundColor(primaryColor)
-          Text("Ships: \(score)")
+          let goal = currentGoal()
+          Text("Ships: \(score)/\(goal)")
             .font(.body)
             .foregroundColor(primaryColor)
-          Text("Left: \(selectedCircles - score)")
+          Text("Left: \(max(0, goal - score))")
             .font(.body)
             .foregroundColor(primaryColor)
         }
@@ -437,25 +450,28 @@ struct ContentView: View {
                 enterGame()
               } else if gameState == .postGame {
                 enterMenu()
-              } else if score >= selectedCircles {
-                gameWon = true
-                // Player won - in progressive mode, advance to next level
-                if progressiveMode && currentLevel < PROGRESSIVE_LEVELS.count - 1 {
-                  currentLevel += 1
-                  let level = PROGRESSIVE_LEVELS[currentLevel]
-                  selectedBombs = level.bombs
-                  selectedCircles = level.ships
-                  score = 0
-                  bombsRemaining = selectedBombs
-                  movingCircles.removeAll()
-                  boomingCircles.removeAll()
-                  initialized = false
-                  appear(nil)
-                } else {
-                  gameState = .postGame
-                }
               } else {
-                makeInitialBoom(value.location)
+                let goal = currentGoal()
+                if score >= goal {
+                  gameWon = true
+                  // Player won - in progressive mode, advance to next level
+                  if progressiveMode && currentLevel < PROGRESSIVE_LEVELS.count - 1 {
+                    currentLevel += 1
+                    let level = PROGRESSIVE_LEVELS[currentLevel]
+                    selectedBombs = level.bombs
+                    selectedCircles = level.ships
+                    score = 0
+                    bombsRemaining = selectedBombs
+                    movingCircles.removeAll()
+                    boomingCircles.removeAll()
+                    initialized = false
+                    appear(nil)
+                  } else {
+                    gameState = .postGame
+                  }
+                } else {
+                  makeInitialBoom(value.location)
+                }
               }
             }
         )
@@ -480,10 +496,11 @@ struct ContentView: View {
               Text("Used: \(selectedBombs - bombsRemaining)")
                 .font(.body)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
-              Text("Ships: \(score)")
+              let goal = currentGoal()
+              Text("Ships: \(score)/\(goal)")
                 .font(.body)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
-              Text("Left: \(selectedCircles - score)")
+              Text("Left: \(max(0, goal - score))")
                 .font(.body)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
             }
