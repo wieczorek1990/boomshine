@@ -26,7 +26,6 @@ struct ContentView: View {
   @State private var progressiveMode: Bool = false
   @State private var infinityMode: Bool = false
   @State private var currentLevel: Int = 0
-  @State private var parentalTarget: [Int] = []
   @State private var parentalTapped: Set<Int> = []
   @State private var gameWon: Bool = false
   @State private var screenWidth: Int = 0
@@ -160,11 +159,15 @@ struct ContentView: View {
     return selectedFiendBombSize
   }
 
-  func formatNumber(_ value: Double) -> String {
+  private static let numberFormatter: NumberFormatter = {
     let formatter = NumberFormatter()
     formatter.maximumFractionDigits = 4
     formatter.minimumFractionDigits = 0
-    return formatter.string(from: value as NSNumber) ?? String(value)
+    return formatter
+  }()
+
+  func formatNumber(_ value: Double) -> String {
+    ContentView.numberFormatter.string(from: value as NSNumber) ?? String(value)
   }
 
   func boom() {
@@ -261,15 +264,6 @@ struct ContentView: View {
   }
 
   func enterParentalGate() {
-    // Randomly choose one of the two patterns
-    // Pattern 1: 0x0 / 0x0 / 0xx -> indices [1,4,7,8]
-    // Pattern 2: x00 / x00 / xx0 -> indices [0,3,6,7]
-    let patternChoice = Int.random(in: 0...1)
-    if patternChoice == 0 {
-      parentalTarget = [1, 4, 7, 8]
-    } else {
-      parentalTarget = [0, 3, 6, 7]
-    }
     parentalTapped = []
     movingCircles.removeAll()
     boomingCircles.removeAll()
@@ -280,7 +274,6 @@ struct ContentView: View {
   }
 
   func checkParentalGate() -> Bool {
-    // Accept either L-shaped pattern so the user doesn't need to guess which one is active
     let patternL = Set([0, 3, 6, 7])
     let patternJ = Set([1, 4, 7, 8])
     return parentalTapped == patternL || parentalTapped == patternJ
@@ -820,8 +813,11 @@ struct ContentView: View {
         }
         let monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
           if event.keyCode == 53 {  // ESC key
-            if gameState == .splash || gameState == .parentalGate || gameState == .settings || gameState == .menu {
+            if gameState == .splash || gameState == .settings || gameState == .menu {
               NSApplication.shared.terminate(nil)
+              return nil
+            } else if gameState == .parentalGate {
+              enterMenu()
               return nil
             } else if gameState == .playing {
               resetGame()
@@ -926,14 +922,14 @@ struct ContentView: View {
 
   private func startGameLoop() {
     timer?.invalidate()
-    timer = Timer.scheduledTimer(withTimeInterval: gameUpdateInterval, repeats: true) { _ in
+    timer = Timer.scheduledTimer(withTimeInterval: gameUpdateInterval, repeats: true) { [self] _ in
       Task { @MainActor in
-        move()
-        if gameState == .playing {
-          checkCollisions()
+        self.move()
+        if self.gameState == .playing {
+          self.checkCollisions()
         }
-        boom()
-        tickCount += 1
+        self.boom()
+        self.tickCount += 1
       }
     }
   }
@@ -970,3 +966,4 @@ struct CircleShape: Shape {
     return path
   }
 }
+
