@@ -22,6 +22,7 @@ struct ContentView: View {
   @State private var selectedFiendBombSize: Double = 1.0
   @State private var selectedSpeed: GameSpeed = .regular
   @State private var progressiveMode: Bool = false
+  @State private var infinityMode: Bool = false
   @State private var currentLevel: Int = 0
   @State private var gameWon: Bool = false
   @State private var screenWidth: Int = 0
@@ -129,6 +130,9 @@ struct ContentView: View {
     if progressiveMode {
       return PROGRESSIVE_LEVELS[currentLevel].goal
     }
+    if infinityMode {
+      return generateInfinityLevel(currentLevel).goal
+    }
     return selectedCircles
   }
 
@@ -136,12 +140,18 @@ struct ContentView: View {
     if progressiveMode {
       return PROGRESSIVE_LEVELS[currentLevel].bombSize
     }
+    if infinityMode {
+      return generateInfinityLevel(currentLevel).bombSize
+    }
     return selectedBombSize
   }
 
   func currentFiendBombSize() -> Double {
     if progressiveMode {
       return PROGRESSIVE_LEVELS[currentLevel].fiendBombSize
+    }
+    if infinityMode {
+      return generateInfinityLevel(currentLevel).fiendBombSize
     }
     return selectedFiendBombSize
   }
@@ -192,6 +202,21 @@ struct ContentView: View {
         appear(nil)
         return
       }
+      // In infinity mode, always advance to the next level
+      if infinityMode {
+        gameWon = true
+        currentLevel += 1
+        let level = generateInfinityLevel(currentLevel)
+        selectedBombs = level.bombs
+        selectedCircles = level.ships
+        score = 0
+        bombsRemaining = selectedBombs
+        movingCircles.removeAll()
+        boomingCircles.removeAll()
+        initialized = false
+        appear(nil)
+        return
+      }
       gameWon = true
       gameState = .postGame
     }
@@ -201,6 +226,7 @@ struct ContentView: View {
     timer?.invalidate()
     timer = nil
     progressiveMode = false
+    infinityMode = false
     currentLevel = 0
     selectedBombs = 4
     selectedCircles = 32
@@ -216,6 +242,7 @@ struct ContentView: View {
 
   func enterSettings() {
     progressiveMode = false
+    infinityMode = false
     gameState = .settings
   }
 
@@ -230,8 +257,19 @@ struct ContentView: View {
 
   func enterProgressive() {
     progressiveMode = true
+    infinityMode = false
     currentLevel = 0
     let level = PROGRESSIVE_LEVELS[currentLevel]
+    selectedBombs = level.bombs
+    selectedCircles = level.ships
+    enterPreGame()
+  }
+
+  func enterInfinity() {
+    progressiveMode = false
+    infinityMode = true
+    currentLevel = 0
+    let level = generateInfinityLevel(currentLevel)
     selectedBombs = level.bombs
     selectedCircles = level.ships
     enterPreGame()
@@ -244,6 +282,10 @@ struct ContentView: View {
   func enterGame() {
     if progressiveMode {
       let level = PROGRESSIVE_LEVELS[currentLevel]
+      selectedBombs = level.bombs
+      selectedCircles = level.ships
+    } else if infinityMode {
+      let level = generateInfinityLevel(currentLevel)
       selectedBombs = level.bombs
       selectedCircles = level.ships
     }
@@ -271,6 +313,14 @@ struct ContentView: View {
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(primaryColor, lineWidth: 2))
         .onTapGesture {
           enterProgressive()
+        }
+      Text("Infinity.")
+        .font(.title2)
+        .foregroundColor(primaryColor)
+        .padding(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(primaryColor, lineWidth: 2))
+        .onTapGesture {
+          enterInfinity()
         }
     }
   }
@@ -461,6 +511,11 @@ struct ContentView: View {
               .font(.body)
               .foregroundColor(primaryColor)
           }
+          if infinityMode {
+            Text("Level: \(currentLevel + 1)")
+              .font(.body)
+              .foregroundColor(primaryColor)
+          }
           Text("Bomb size: \(formatNumber(currentBombSize()))")
             .font(.body)
             .foregroundColor(primaryColor)
@@ -477,6 +532,9 @@ struct ContentView: View {
           Text("Ships left: \(max(0, goal - score))")
             .font(.body)
             .foregroundColor(primaryColor)
+          Text("Goal: \(goal)")
+            .font(.body)
+            .foregroundColor(primaryColor)
         }
         if gameWon && progressiveMode && currentLevel < PROGRESSIVE_LEVELS.count - 1 {
           Text("Next.")
@@ -487,6 +545,26 @@ struct ContentView: View {
             .onTapGesture {
               currentLevel += 1
               let level = PROGRESSIVE_LEVELS[currentLevel]
+              selectedBombs = level.bombs
+              selectedCircles = level.ships
+              score = 0
+              bombsRemaining = selectedBombs
+              movingCircles.removeAll()
+              boomingCircles.removeAll()
+              initialized = false
+              appear(nil)
+              enterGame()
+            }
+        }
+        if gameWon && infinityMode {
+          Text("Next.")
+            .font(.title2)
+            .foregroundColor(primaryColor)
+            .padding(8)
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(primaryColor, lineWidth: 2))
+            .onTapGesture {
+              currentLevel += 1
+              let level = generateInfinityLevel(currentLevel)
               selectedBombs = level.bombs
               selectedCircles = level.ships
               score = 0
@@ -547,40 +625,39 @@ struct ContentView: View {
         .gesture(
           DragGesture(minimumDistance: 0)
             .onEnded { value in
-              if gameState == .splash {
-                enterMenu()
-              } else if gameState == .menu {
-                enterPreGame()
-              } else if gameState == .settings {
-                enterPreGame()
-              } else if gameState == .preGame {
-                movingCircles.removeAll()
-                boomingCircles.removeAll()
-                score = 0
-                bombsRemaining = selectedBombs
-                gameWon = false
-                initialized = false
-                appear(nil)
-                enterGame()
-              } else if gameState == .postGame {
-                enterMenu()
-              } else {
+              if gameState == .playing {
                 makeInitialBoom(value.location)
+              } else if gameState == .splash {
+                enterMenu()
               }
             }
         )
 
         if gameState == .splash {
           SplashView()
+            .onTapGesture {
+              enterMenu()
+            }
         } else if gameState == .menu {
           menu()
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .contentShape(Rectangle())
+          .onTapGesture {}
         } else if gameState == .settings {
           settings()
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .contentShape(Rectangle())
+          .onTapGesture {}
         } else if gameState == .playing {
           VStack {
             HStack(spacing: 16) {
               if progressiveMode {
                 Text("Level: \(PROGRESSIVE_LEVELS[currentLevel].id)/\(PROGRESSIVE_LEVELS.count)")
+                  .font(.body)
+                  .foregroundColor(colorScheme == .dark ? .white : .black)
+              }
+              if infinityMode {
+                Text("Level: \(currentLevel + 1)")
                   .font(.body)
                   .foregroundColor(colorScheme == .dark ? .white : .black)
               }
@@ -609,6 +686,9 @@ struct ContentView: View {
           .padding(.top)
         } else if gameState == .preGame || gameState == .postGame {
           status()
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .contentShape(Rectangle())
+          .onTapGesture {}
         }
       }
       .onAppear {
@@ -665,6 +745,19 @@ struct ContentView: View {
                 gameWon = score >= currentGoal()
                 gameState = .postGame
               }
+              return nil
+            } else if gameState == .playing && infinityMode {
+              // In infinity mode, always advance to the next level
+              currentLevel += 1
+              let level = generateInfinityLevel(currentLevel)
+              selectedBombs = level.bombs
+              selectedCircles = level.ships
+              score = 0
+              bombsRemaining = selectedBombs
+              movingCircles.removeAll()
+              boomingCircles.removeAll()
+              initialized = false
+              appear(nil)
               return nil
             }
           } else if event.keyCode == 8 && event.modifierFlags.contains(.command) {  // Cmd+C -> Play

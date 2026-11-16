@@ -78,3 +78,48 @@ let PROGRESSIVE_LEVELS: [ProgressiveLevel] = [
   ProgressiveLevel(
     id: 12, bombSize: largeSize, fiendBombSize: largeSize, bombs: 12, ships: 64, goal: 55),
 ]
+
+func generateInfinityLevel(_ level: Int) -> ProgressiveLevel {
+  // Procedurally generate levels that continue the difficulty curve from Progressive mode.
+  // Level 0 (first infinity level) starts near the difficulty of progressive level 12
+  // and scales up from there.
+  let l = Double(level)
+
+  // Ships: grow exponentially, starting from 64 and scaling up
+  let ships = max(64, Int(64 * pow(1.15, l)))
+
+  // Bombs: grow slowly to keep the challenge balanced
+  let bombs = max(12, Int(12 * pow(1.08, l)))
+
+  // Goal: must destroy most ships, scaling with ship count
+  let goalRatio: Double = min(0.9, 0.85 + 0.05 * l / (1.0 + l))
+  let goal = max(1, Int(Double(ships) * goalRatio))
+
+  // Bomb size: cycle through sizes, gradually increasing
+  let bombSizeCycle = level % 4
+  let bombSize: Double
+  switch bombSizeCycle {
+  case 0: bombSize = mediumSize
+  case 1: bombSize = largeSize
+  case 2: bombSize = largeSize
+  default: bombSize = 1.0
+  }
+
+  // Fiend bomb size: increases with level
+  let fiendSizeCycle = level % 3
+  let fiendBombSize: Double
+  switch fiendSizeCycle {
+  case 0: fiendBombSize = mediumSize
+  case 1: fiendBombSize = largeSize
+  default: fiendBombSize = 1.0
+  }
+
+  return ProgressiveLevel(
+    id: level + 1,
+    bombSize: bombSize,
+    fiendBombSize: fiendBombSize,
+    bombs: bombs,
+    ships: ships,
+    goal: goal
+  )
+}
