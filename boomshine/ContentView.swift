@@ -640,14 +640,14 @@ struct ContentView: View {
             }
         } else if gameState == .menu {
           menu()
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .contentShape(Rectangle())
-          .onTapGesture {}
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture {}
         } else if gameState == .settings {
           settings()
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .contentShape(Rectangle())
-          .onTapGesture {}
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture {}
         } else if gameState == .playing {
           VStack {
             HStack(spacing: 16) {
@@ -686,9 +686,9 @@ struct ContentView: View {
           .padding(.top)
         } else if gameState == .preGame || gameState == .postGame {
           status()
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .contentShape(Rectangle())
-          .onTapGesture {}
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture {}
         }
       }
       .onAppear {
