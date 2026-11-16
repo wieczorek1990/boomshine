@@ -27,15 +27,17 @@ class Circle {
 
 class BoomingCircle {
   var circle: Circle
+  var maxRadius: Float
   var fall: Bool = false
   var fallCount: Int = 0
   var untoucheable: Bool = false
   var isDone: Bool = false
   var initial: Bool = false
 
-  init(circle: Circle, initial: Bool = false) {
+  init(circle: Circle, initial: Bool = false, maxRadius: Float = MAXIMUM_CIRCLE_RADIUS) {
     self.circle = circle
     self.initial = initial
+    self.maxRadius = maxRadius
   }
 
   func boom() {
@@ -51,7 +53,7 @@ class BoomingCircle {
         return
       }
 
-      if circle.radius > MAXIMUM_CIRCLE_RADIUS {
+      if circle.radius > maxRadius {
         fall = true
         fallCount += 1
       }
@@ -61,7 +63,7 @@ class BoomingCircle {
           circle.radius += 0.5
         } else {
           // Quick burst to medium, then stable growth to max
-          let medium = MAXIMUM_CIRCLE_RADIUS / 2
+          let medium = maxRadius / 2
           if circle.radius < medium {
             // Fast growth phase: small → medium (additive boost for smooth visible growth)
             circle.radius *= DEFAULT_SIZE_MULTIPLIER

@@ -18,6 +18,8 @@ struct ContentView: View {
   @State private var bombsRemaining: Int = 4
   @State private var selectedBombs: Int = 4
   @State private var selectedCircles: Int = 32
+  @State private var selectedBombSize: Double = 1.0
+  @State private var selectedFiendBombSize: Double = 1.0
   @State private var selectedSpeed: GameSpeed = .regular
   @State private var progressiveMode: Bool = false
   @State private var currentLevel: Int = 0
@@ -94,7 +96,8 @@ struct ContentView: View {
     let y = point.y.toRoundedInt()
 
     let boomCircle = Circle(x: x, y: y, radius: 0.0, color: USER_COLOR)
-    boomingCircles.append(BoomingCircle(circle: boomCircle, initial: true))
+    let maxR = Float(currentBombSize()) * MAXIMUM_CIRCLE_RADIUS
+    boomingCircles.append(BoomingCircle(circle: boomCircle, initial: true, maxRadius: maxR))
 
   }
 
@@ -108,7 +111,8 @@ struct ContentView: View {
         indicesToRemove.append(index)
         mc.stop()
         scoreDelta += 1
-        newBoomingCircles.append(BoomingCircle(circle: mc.circle))
+        let fiendMaxR = Float(currentFiendBombSize()) * MAXIMUM_CIRCLE_RADIUS
+        newBoomingCircles.append(BoomingCircle(circle: mc.circle, maxRadius: fiendMaxR))
       }
     }
 
@@ -117,7 +121,7 @@ struct ContentView: View {
         movingCircles.remove(at: index)
       }
       boomingCircles.append(contentsOf: newBoomingCircles)
-      score = min(score + scoreDelta, selectedCircles)
+      score = min(score + scoreDelta, currentGoal())
     }
   }
 
@@ -128,19 +132,54 @@ struct ContentView: View {
     return selectedCircles
   }
 
+  func currentBombSize() -> Double {
+    if progressiveMode {
+      return PROGRESSIVE_LEVELS[currentLevel].bombSize
+    }
+    return selectedBombSize
+  }
+
+  func currentFiendBombSize() -> Double {
+    if progressiveMode {
+      return PROGRESSIVE_LEVELS[currentLevel].fiendBombSize
+    }
+    return selectedFiendBombSize
+  }
+
+  func formatNumber(_ value: Double) -> String {
+    let formatter = NumberFormatter()
+    formatter.maximumFractionDigits = 4
+    formatter.minimumFractionDigits = 0
+    return formatter.string(from: value as NSNumber) ?? String(value)
+  }
+
   func boom() {
     for bc in boomingCircles {
       bc.boom()
     }
     boomingCircles.removeAll { $0.isDone }
 
-    // When all bombs are spent and no booming circles remain, end the round
+    let goal = currentGoal()
+
+    // End with failure when no bombs and no booming circles remain, even if moving circles are still on screen
     if gameState == .playing && bombsRemaining == 0 && boomingCircles.isEmpty {
-      let goal = currentGoal()
-      // In progressive mode, advance to the next level only if the player met the goal
-      if progressiveMode && score >= goal && currentLevel < PROGRESSIVE_LEVELS.count - 1 {
+      if score < goal {
+        gameWon = false
+      } else {
         gameWon = true
-        // Advance to the next level
+      }
+      movingCircles.removeAll()
+      gameState = .postGame
+      return
+    }
+
+    guard gameState == .playing && boomingCircles.isEmpty && movingCircles.isEmpty else { return }
+
+    // End the round when goal is met (even if bombs remain)
+    if score >= goal {
+      // In progressive mode, advance to the next level if the goal was met
+      if progressiveMode && currentLevel < PROGRESSIVE_LEVELS.count - 1 {
+        gameWon = true
         currentLevel += 1
         let level = PROGRESSIVE_LEVELS[currentLevel]
         selectedBombs = level.bombs
@@ -153,7 +192,7 @@ struct ContentView: View {
         appear(nil)
         return
       }
-      gameWon = score >= goal
+      gameWon = true
       gameState = .postGame
     }
   }
@@ -161,6 +200,12 @@ struct ContentView: View {
   func resetGame() {
     timer?.invalidate()
     timer = nil
+    progressiveMode = false
+    currentLevel = 0
+    selectedBombs = 4
+    selectedCircles = 32
+    selectedBombSize = 1.0
+    selectedFiendBombSize = 1.0
     gameState = .splash
     score = 0
     bombsRemaining = selectedBombs
@@ -282,6 +327,52 @@ struct ContentView: View {
         }
       }
       VStack(spacing: 4) {
+        Text("Bomb Size")
+          .font(.caption)
+          .foregroundColor(secondaryColor)
+        HStack(spacing: 8) {
+          Button("Mini") {
+            selectedBombSize = miniSize
+          }
+          .foregroundColor(selectedBombSize == miniSize ? primaryColor : secondaryColor)
+          Button("Small") {
+            selectedBombSize = smallSize
+          }
+          .foregroundColor(selectedBombSize == smallSize ? primaryColor : secondaryColor)
+          Button("Medium") {
+            selectedBombSize = mediumSize
+          }
+          .foregroundColor(selectedBombSize == mediumSize ? primaryColor : secondaryColor)
+          Button("Large") {
+            selectedBombSize = largeSize
+          }
+          .foregroundColor(selectedBombSize == largeSize ? primaryColor : secondaryColor)
+        }
+      }
+      VStack(spacing: 4) {
+        Text("Fiend Bomb Size")
+          .font(.caption)
+          .foregroundColor(secondaryColor)
+        HStack(spacing: 8) {
+          Button("Mini") {
+            selectedFiendBombSize = miniSize
+          }
+          .foregroundColor(selectedFiendBombSize == miniSize ? primaryColor : secondaryColor)
+          Button("Small") {
+            selectedFiendBombSize = smallSize
+          }
+          .foregroundColor(selectedFiendBombSize == smallSize ? primaryColor : secondaryColor)
+          Button("Medium") {
+            selectedFiendBombSize = mediumSize
+          }
+          .foregroundColor(selectedFiendBombSize == mediumSize ? primaryColor : secondaryColor)
+          Button("Large") {
+            selectedFiendBombSize = largeSize
+          }
+          .foregroundColor(selectedFiendBombSize == largeSize ? primaryColor : secondaryColor)
+        }
+      }
+      VStack(spacing: 4) {
         Text("Speed")
           .font(.caption)
           .foregroundColor(secondaryColor)
@@ -370,19 +461,42 @@ struct ContentView: View {
               .font(.body)
               .foregroundColor(primaryColor)
           }
-          Text("Bombs: \(bombsRemaining)")
+          Text("Bomb size: \(formatNumber(currentBombSize()))")
             .font(.body)
             .foregroundColor(primaryColor)
-          Text("Used: \(selectedBombs - bombsRemaining)")
+          Text("Bombs count: \(bombsRemaining)")
+            .font(.body)
+            .foregroundColor(primaryColor)
+          Text("Bombs used: \(selectedBombs - bombsRemaining)")
             .font(.body)
             .foregroundColor(primaryColor)
           let goal = currentGoal()
-          Text("Ships: \(score)/\(goal)")
+          Text("Ships count: \(selectedCircles)")
             .font(.body)
             .foregroundColor(primaryColor)
-          Text("Left: \(max(0, goal - score))")
+          Text("Ships left: \(max(0, goal - score))")
             .font(.body)
             .foregroundColor(primaryColor)
+        }
+        if gameWon && progressiveMode && currentLevel < PROGRESSIVE_LEVELS.count - 1 {
+          Text("Next.")
+            .font(.title2)
+            .foregroundColor(primaryColor)
+            .padding(8)
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(primaryColor, lineWidth: 2))
+            .onTapGesture {
+              currentLevel += 1
+              let level = PROGRESSIVE_LEVELS[currentLevel]
+              selectedBombs = level.bombs
+              selectedCircles = level.ships
+              score = 0
+              bombsRemaining = selectedBombs
+              movingCircles.removeAll()
+              boomingCircles.removeAll()
+              initialized = false
+              appear(nil)
+              enterGame()
+            }
         }
         Text("Play Again.")
           .font(.title2)
@@ -451,27 +565,7 @@ struct ContentView: View {
               } else if gameState == .postGame {
                 enterMenu()
               } else {
-                let goal = currentGoal()
-                if score >= goal {
-                  gameWon = true
-                  // Player won - in progressive mode, advance to next level
-                  if progressiveMode && currentLevel < PROGRESSIVE_LEVELS.count - 1 {
-                    currentLevel += 1
-                    let level = PROGRESSIVE_LEVELS[currentLevel]
-                    selectedBombs = level.bombs
-                    selectedCircles = level.ships
-                    score = 0
-                    bombsRemaining = selectedBombs
-                    movingCircles.removeAll()
-                    boomingCircles.removeAll()
-                    initialized = false
-                    appear(nil)
-                  } else {
-                    gameState = .postGame
-                  }
-                } else {
-                  makeInitialBoom(value.location)
-                }
+                makeInitialBoom(value.location)
               }
             }
         )
@@ -486,21 +580,25 @@ struct ContentView: View {
           VStack {
             HStack(spacing: 16) {
               if progressiveMode {
-                Text("Level: \(currentLevel + 1)/\(PROGRESSIVE_LEVELS.count)")
+                Text("Level: \(PROGRESSIVE_LEVELS[currentLevel].id)/\(PROGRESSIVE_LEVELS.count)")
                   .font(.body)
                   .foregroundColor(colorScheme == .dark ? .white : .black)
               }
-              Text("Bombs: \(bombsRemaining)")
+              Text("Bomb size: \(formatNumber(currentBombSize()))")
+              Text("Bombs count: \(bombsRemaining)")
                 .font(.body)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
-              Text("Used: \(selectedBombs - bombsRemaining)")
+              Text("Bombs used: \(selectedBombs - bombsRemaining)")
                 .font(.body)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
               let goal = currentGoal()
-              Text("Ships: \(score)/\(goal)")
+              Text("Ships count: \(selectedCircles)")
                 .font(.body)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
-              Text("Left: \(max(0, goal - score))")
+              Text("Ships left: \(max(0, goal - score))")
+                .font(.body)
+                .foregroundColor(colorScheme == .dark ? .white : .black)
+              Text("Goal: \(goal)")
                 .font(.body)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
             }
@@ -548,6 +646,25 @@ struct ContentView: View {
               return nil
             } else if gameState == .postGame {
               enterMenu()
+              return nil
+            } else if gameState == .playing && progressiveMode {
+              // Skip to next level or end game on last level
+              if currentLevel < PROGRESSIVE_LEVELS.count - 1 {
+                currentLevel += 1
+                let level = PROGRESSIVE_LEVELS[currentLevel]
+                selectedBombs = level.bombs
+                selectedCircles = level.ships
+                score = 0
+                bombsRemaining = selectedBombs
+                movingCircles.removeAll()
+                boomingCircles.removeAll()
+                initialized = false
+                appear(nil)
+              } else {
+                // On last level, end the game
+                gameWon = score >= currentGoal()
+                gameState = .postGame
+              }
               return nil
             }
           } else if event.keyCode == 8 && event.modifierFlags.contains(.command) {  // Cmd+C -> Play

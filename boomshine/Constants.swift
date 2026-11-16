@@ -37,24 +37,32 @@ func stepSize(for speed: GameSpeed) -> Int {
 }
 
 struct ProgressiveLevel {
+  let id: Int
+  let bombSize: Double
+  let fiendBombSize: Double
   let bombs: Int
   let ships: Int
   let goal: Int
 }
 
+let miniSize = 0.125
+let smallSize = 0.25
+let mediumSize = 0.5
+let largeSize = 0.75
+
 let PROGRESSIVE_LEVELS: [ProgressiveLevel] = [
-  ProgressiveLevel(bombs: 1, ships: 1, goal: 1),
-  ProgressiveLevel(bombs: 3, ships: 2, goal: 2),
-  ProgressiveLevel(bombs: 6, ships: 4, goal: 4),
-  ProgressiveLevel(bombs: 12, ships: 8, goal: 8),
+  ProgressiveLevel(id: 1, bombSize: smallSize, fiendBombSize: smallSize, bombs: 1, ships: 1, goal: 1),
+  ProgressiveLevel(id: 2, bombSize: smallSize, fiendBombSize: smallSize, bombs: 3, ships: 2, goal: 2),
+  ProgressiveLevel(id: 3, bombSize: smallSize, fiendBombSize: smallSize, bombs: 6, ships: 4, goal: 3),
+  ProgressiveLevel(id: 4, bombSize: smallSize, fiendBombSize: smallSize, bombs: 12, ships: 8, goal: 5),
 
-  ProgressiveLevel(bombs: 5, ships: 16, goal: 13),
-  ProgressiveLevel(bombs: 5, ships: 32, goal: 30),
-  ProgressiveLevel(bombs: 10, ships: 48, goal: 48),
-  ProgressiveLevel(bombs: 10, ships: 64, goal: 64),
+  ProgressiveLevel(id: 5, bombSize: mediumSize, fiendBombSize: smallSize, bombs: 5, ships: 16, goal: 12),
+  ProgressiveLevel(id: 6, bombSize: mediumSize, fiendBombSize: smallSize, bombs: 5, ships: 32, goal: 16),
+  ProgressiveLevel(id: 7, bombSize: mediumSize, fiendBombSize: mediumSize, bombs: 10, ships: 48, goal: 24),
+  ProgressiveLevel(id: 8, bombSize: mediumSize, fiendBombSize: mediumSize, bombs: 10, ships: 64, goal: 36),
 
-  ProgressiveLevel(bombs: 6, ships: 16, goal: 14),
-  ProgressiveLevel(bombs: 6, ships: 16, goal: 14),
-  ProgressiveLevel(bombs: 12, ships: 32, goal: 32),
-  ProgressiveLevel(bombs: 12, ships: 64, goal: 64),
+  ProgressiveLevel(id: 9, bombSize: largeSize, fiendBombSize: smallSize, bombs: 6, ships: 16, goal: 14),
+  ProgressiveLevel(id: 10, bombSize: largeSize, fiendBombSize: mediumSize, bombs: 6, ships: 16, goal: 14),
+  ProgressiveLevel(id: 11, bombSize: largeSize, fiendBombSize: mediumSize, bombs: 12, ships: 32, goal: 24),
+  ProgressiveLevel(id: 12, bombSize: largeSize, fiendBombSize: largeSize, bombs: 12, ships: 64, goal: 55),
 ]
