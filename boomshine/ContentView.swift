@@ -3,6 +3,7 @@ import SwiftUI
 
 enum GameState {
   case splash
+  case parentalGate
   case menu
   case settings
   case preGame
@@ -20,10 +21,13 @@ struct ContentView: View {
   @State private var selectedCircles: Int = 32
   @State private var selectedBombSize: Double = 1.0
   @State private var selectedFiendBombSize: Double = 1.0
+  @State private var selectedGoal: Int = 32
   @State private var selectedSpeed: GameSpeed = .regular
   @State private var progressiveMode: Bool = false
   @State private var infinityMode: Bool = false
   @State private var currentLevel: Int = 0
+  @State private var parentalTarget: [Int] = []
+  @State private var parentalTapped: Set<Int> = []
   @State private var gameWon: Bool = false
   @State private var screenWidth: Int = 0
   @State private var screenHeight: Int = 0
@@ -133,7 +137,7 @@ struct ContentView: View {
     if infinityMode {
       return generateInfinityLevel(currentLevel).goal
     }
-    return selectedCircles
+    return selectedGoal
   }
 
   func currentBombSize() -> Double {
@@ -230,6 +234,7 @@ struct ContentView: View {
     currentLevel = 0
     selectedBombs = 4
     selectedCircles = 32
+    selectedGoal = 32
     selectedBombSize = 1.0
     selectedFiendBombSize = 1.0
     gameState = .splash
@@ -253,6 +258,43 @@ struct ContentView: View {
     appear(nil)
     startGameLoop()
     gameState = .menu
+  }
+
+  func enterParentalGate() {
+    // Randomly choose one of the two patterns
+    // Pattern 1: 0x0 / 0x0 / 0xx -> indices [1,4,7,8]
+    // Pattern 2: x00 / x00 / xx0 -> indices [0,3,6,7]
+    let patternChoice = Int.random(in: 0...1)
+    if patternChoice == 0 {
+      parentalTarget = [1, 4, 7, 8]
+    } else {
+      parentalTarget = [0, 3, 6, 7]
+    }
+    parentalTapped = []
+    movingCircles.removeAll()
+    boomingCircles.removeAll()
+    initialized = false
+    appear(nil)
+    startGameLoop()
+    gameState = .parentalGate
+  }
+
+  func checkParentalGate() -> Bool {
+    // Accept either L-shaped pattern so the user doesn't need to guess which one is active
+    let patternL = Set([0, 3, 6, 7])
+    let patternJ = Set([1, 4, 7, 8])
+    return parentalTapped == patternL || parentalTapped == patternJ
+  }
+
+  func parentalTap(_ index: Int) {
+    if parentalTapped.contains(index) {
+      parentalTapped.remove(index)
+    } else {
+      parentalTapped.insert(index)
+    }
+    if checkParentalGate() {
+      enterMenu()
+    }
   }
 
   func enterProgressive() {
@@ -295,9 +337,54 @@ struct ContentView: View {
   }
 
   @ViewBuilder
+  func parentalGate() -> some View {
+    let primaryColor = colorScheme == .dark ? Color.white : Color.black
+    VStack(spacing: 16) {
+      Text("🔒")
+        .font(.system(size: 40))
+        .foregroundColor(primaryColor)
+      Grid(horizontalSpacing: 12, verticalSpacing: 12) {
+        GridRow {
+          CircleButton(index: 0, tapped: parentalTapped.contains(0), primaryColor: primaryColor)
+            .onTapGesture { parentalTap(0) }
+          CircleButton(index: 1, tapped: parentalTapped.contains(1), primaryColor: primaryColor)
+            .onTapGesture { parentalTap(1) }
+          CircleButton(index: 2, tapped: parentalTapped.contains(2), primaryColor: primaryColor)
+            .onTapGesture { parentalTap(2) }
+        }
+        GridRow {
+          CircleButton(index: 3, tapped: parentalTapped.contains(3), primaryColor: primaryColor)
+            .onTapGesture { parentalTap(3) }
+          CircleButton(index: 4, tapped: parentalTapped.contains(4), primaryColor: primaryColor)
+            .onTapGesture { parentalTap(4) }
+          CircleButton(index: 5, tapped: parentalTapped.contains(5), primaryColor: primaryColor)
+            .onTapGesture { parentalTap(5) }
+        }
+        GridRow {
+          CircleButton(index: 6, tapped: parentalTapped.contains(6), primaryColor: primaryColor)
+            .onTapGesture { parentalTap(6) }
+          CircleButton(index: 7, tapped: parentalTapped.contains(7), primaryColor: primaryColor)
+            .onTapGesture { parentalTap(7) }
+          CircleButton(index: 8, tapped: parentalTapped.contains(8), primaryColor: primaryColor)
+            .onTapGesture { parentalTap(8) }
+        }
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .contentShape(Rectangle())
+    .onTapGesture {}
+  }
+
+  @ViewBuilder
   func menu() -> some View {
     let primaryColor = colorScheme == .dark ? Color.white : Color.black
     VStack(spacing: 16) {
+      Text("🔒")
+        .font(.system(size: 40))
+        .foregroundColor(primaryColor)
+        .onTapGesture {
+          enterParentalGate()
+        }
       Text("Select.")
         .font(.title2)
         .foregroundColor(primaryColor)
@@ -360,9 +447,11 @@ struct ContentView: View {
         HStack(spacing: 8) {
           Button("8◀") {
             if selectedCircles > 8 { selectedCircles -= 8 } else { selectedCircles = 1 }
+            if selectedGoal > selectedCircles { selectedGoal = selectedCircles }
           }
           Button("-") {
             if selectedCircles > 1 { selectedCircles -= 1 }
+            if selectedGoal > selectedCircles { selectedGoal = selectedCircles }
           }
           Text("\(selectedCircles)")
             .font(.title3)
@@ -373,6 +462,29 @@ struct ContentView: View {
           }
           Button("▶8") {
             if selectedCircles < 56 { selectedCircles += 8 } else { selectedCircles = 64 }
+          }
+        }
+      }
+      VStack(spacing: 4) {
+        Text("Goal")
+          .font(.caption)
+          .foregroundColor(secondaryColor)
+        HStack(spacing: 8) {
+          Button("8◀") {
+            if selectedGoal > 8 { selectedGoal -= 8 } else { selectedGoal = 1 }
+          }
+          Button("-") {
+            if selectedGoal > 1 { selectedGoal -= 1 }
+          }
+          Text("\(selectedGoal)")
+            .font(.title3)
+            .foregroundColor(primaryColor)
+            .frame(width: 30)
+          Button("+") {
+            if selectedGoal < selectedCircles { selectedGoal += 1 }
+          }
+          Button("▶8") {
+            if selectedGoal + 8 < selectedCircles { selectedGoal += 8 } else { selectedGoal = selectedCircles }
           }
         }
       }
@@ -622,22 +734,30 @@ struct ContentView: View {
           }
         }
         .id(tickCount)
-        .gesture(
-          DragGesture(minimumDistance: 0)
-            .onEnded { value in
-              if gameState == .playing {
-                makeInitialBoom(value.location)
-              } else if gameState == .splash {
-                enterMenu()
-              }
-            }
-        )
+
+        // Input overlay: only active during playing/splash so it doesn't mask parental gate taps
+        if gameState == .playing || gameState == .splash {
+          Color.clear
+            .contentShape(Rectangle())
+            .gesture(
+              DragGesture(minimumDistance: 0)
+                .onEnded { value in
+                  if gameState == .playing {
+                    makeInitialBoom(value.location)
+                  } else if gameState == .splash {
+                    enterParentalGate()
+                  }
+                }
+            )
+        }
 
         if gameState == .splash {
           SplashView()
             .onTapGesture {
-              enterMenu()
+              enterParentalGate()
             }
+        } else if gameState == .parentalGate {
+          parentalGate()
         } else if gameState == .menu {
           menu()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -695,12 +815,12 @@ struct ContentView: View {
         appear(proxy)
         if gameState == .splash {
           DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            enterMenu()
+            enterParentalGate()
           }
         }
         let monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
           if event.keyCode == 53 {  // ESC key
-            if gameState == .splash || gameState == .settings || gameState == .menu {
+            if gameState == .splash || gameState == .parentalGate || gameState == .settings || gameState == .menu {
               NSApplication.shared.terminate(nil)
               return nil
             } else if gameState == .playing {
@@ -709,7 +829,11 @@ struct ContentView: View {
             }
           } else if event.keyCode == 49 {  // Space key
             if gameState == .splash {
-              enterMenu()
+              enterParentalGate()
+              return nil
+            } else if gameState == .parentalGate {
+              // Re-roll the pattern on space bar
+              enterParentalGate()
               return nil
             } else if gameState == .menu {
               enterPreGame()
@@ -817,4 +941,32 @@ struct ContentView: View {
 
 #Preview {
   ContentView()
+}
+
+struct CircleButton: View {
+  let index: Int
+  let tapped: Bool
+  let primaryColor: Color
+
+  var body: some View {
+    ZStack {
+      CircleShape()
+        .stroke(primaryColor, lineWidth: 2)
+        .frame(width: 44, height: 44)
+      if tapped {
+        CircleShape()
+          .fill(primaryColor)
+          .frame(width: 20, height: 20)
+      }
+    }
+    .contentShape(CircleShape())
+  }
+}
+
+struct CircleShape: Shape {
+  func path(in rect: CGRect) -> Path {
+    var path = Path()
+    path.addEllipse(in: rect)
+    return path
+  }
 }
