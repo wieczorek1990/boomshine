@@ -609,7 +609,7 @@ struct ContentView: View {
     GeometryReader { proxy in
       ZStack {
         if gameState == .splash {
-          Color.black
+          colorScheme == .dark ? Color.black : Color.white
         } else if colorScheme == .dark {
           Color.black
         } else {

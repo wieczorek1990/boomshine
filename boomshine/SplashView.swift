@@ -9,7 +9,7 @@ struct SplashView: View {
       .renderingMode(.template)
       .scaledToFit()
       .frame(width: 200, height: 200)
-      .foregroundColor(.white)
+      .foregroundColor(colorScheme == .dark ? .white : .black)
   }
 }
 
